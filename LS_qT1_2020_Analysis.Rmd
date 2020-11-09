@@ -1,0 +1,229 @@
+---
+title: "FLUX_2019_Analysis"
+author: "Lucinda Sisk"
+date: "3/23/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(here)
+library(corrplot)
+library(foreign)
+library(tidyverse)
+library(modelr)
+library(lm.beta)
+
+demog <- read_csv("Demographics/TIGER_qT1_Demographics.csv", col_names=TRUE)
+qt1<-read_csv("Data/qT1_output_2020-10-22.csv", col_names=TRUE)
+dti <- read_csv("Data/TIGER_ELS_DTI_Oct2019.csv", col_names=TRUE)
+blood <- read_csv("Data/T1_Blood_TIGER_ELST3_7.28.20_LS.csv", col_names=TRUE)
+
+demog$MDD <- as.factor(demog$MDD)
+demog$Sex <- as.factor(demog$Sex)
+
+master <- left_join(qt1, demog, by="ID") %>% 
+  rename(age = `Age at Scan`) %>% 
+  left_join(dti) %>% 
+  left_join(blood, by="ID") 
+
+#write_csv(master, here('master_file_check.csv'))
+
+mdd_sample <- subset(master, MDD == 1)
+ctl_sample <- subset(master, MDD == 0)
+girlsMDD <- subset(mdd_sample, Sex == 2)
+boysMDD <- subset(mdd_sample, Sex == 1)
+tiger <-  subset(master, Study == 'TIGER')
+
+```
+
+
+```{r, tidy=True}
+#Test correlations
+corr_samp <- master %>% 
+  select(LCC_R1:RUF_R1,
+         T1.R.Cingulate.FA.mean:T1.L.UF.RD.mean,
+         DeLogIL1b_tigerNEW:DeLogTNFa_tiger, CRP) %>% 
+  na.omit()
+
+corr_mat <- cor(corr_samp)
+corrplot(corr_mat, method = "circle",
+         tl.cex=.5,
+         tl.col='black',
+         tl.srt = 45) 
+
+```
+```{r, tidy=True}
+require(ggsignif)
+
+ggplot(master, aes(x= MDD, y=LCC_R1)) +
+  geom_boxplot(fill = 'pink') +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()+
+  ylim(0.0005,.00125)
+
+ggplot(master, aes(x= MDD, y=RCC_R1)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()+
+  ylim(0.0005,.00125)
+
+ggplot(master, aes(x= MDD, y=LUF_R1)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()+
+  ylim(0.0005,.00125)
+
+ggplot(master, aes(x= MDD, y=RUF_R1)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()+
+  ylim(0.0005,.00125)
+
+#Check for sex differences
+ggplot(master, aes(x=Sex, y=LCC_R1)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()+
+  ylim(0.0005,.00125)
+
+ggplot(master, aes(x=Sex, y=RCC_R1)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()+
+  ylim(0.0005,.00125)
+
+ggplot(master, aes(x=Sex, y=LUF_R1)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()+
+  ylim(0.0005,.00125)
+
+ggplot(master, aes(x=Sex, y=RUF_R1)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()+
+  ylim(0.0005,.00125)
+
+#Scatterplots
+
+ggplot(tiger, aes(x=age, y=LCC_R1, col=MDD)) +
+  geom_point() +
+  stat_smooth(method='lm')+
+        theme_minimal()
+
+ggplot(tiger, aes(x=age, y=RCC_R1, col=MDD)) +
+  geom_point() +
+  stat_smooth(method='lm')+
+        theme_minimal()
+
+ggplot(tiger, aes(x=age, y=LUF_R1, col=MDD)) +
+  geom_point() +
+  stat_smooth(method='lm')+
+        theme_minimal()
+
+ggplot(tiger, aes(x=age, y=RUF_R1, col=MDD)) +
+  geom_point() +
+  stat_smooth(method='lm')+
+        theme_minimal()
+
+#Check inflamm diffs
+ggplot(master, aes(x= MDD, y=DeLogIL6_tigerNEW)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()
+
+ggplot(master, aes(x= MDD, y=DeLogIL1b_tigerNEW)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()
+
+ggplot(master, aes(x= MDD, y=DeLogTNFa_tigerNEW)) +
+  geom_boxplot() +
+  geom_signif(comparisons = list( c(1, 2) ),
+                    test=t.test,
+                    step_increase=.1,
+                    map_signif_level=TRUE,
+                    textsize=8) +
+        theme_minimal()
+
+```
+
+```{r, tidy=TRUE}
+
+mdd_lm <- glm(MDD ~ LCC_R1 + age  + Sex + T1.L.Cingulate.MD.mean, master, family='binomial')
+summary(mdd_lm)
+
+mdd_lm2 <- glm(MDD ~ RCC_R1 * age + Sex + T1.R.Cingulate.MD.mean, master, family='binomial')
+summary(mdd_lm2)
+
+mdd_lm <- glm(MDD ~ LUF_R1 + age + Sex + T1.L.UF.MD.mean, master, family='binomial')
+summary(mdd_lm)
+
+mdd_lm2 <- glm(MDD ~ RUF_R1 + age + Sex + T1.R.UF.MD.mean, master, family='binomial')
+summary(mdd_lm2)
+
+```
+
+```{r, tidy=TRUE}
+
+#Plot Left CC qT1 x age
+ggplot(data=master, aes(x = age, y = LCC_R1, color = MDD)) + 
+  geom_point() + geom_smooth(method=lm)
+
+#Plot Right CC qT1 x age
+ggplot(data=master, aes(x = age, y = RCC_R1, color = MDD)) + 
+  geom_point() + geom_smooth(method=lm)
+
+#Plot Left CC FA x age
+ggplot(data=master, aes(x = age, y = T1.L.Cingulate.FA.mean, color = MDD)) + 
+  geom_point() + geom_smooth(method=lm)
+
+#Plot Right CC FA x age
+ggplot(data=master, aes(x = age, y = T1.R.Cingulate.FA.mean, color = MDD)) + 
+  geom_point() + geom_smooth(method=lm)
+
+```
+
+
